@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 量化分析助手</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+--bg:#060b14;--surface:#0d1525;--surface2:#121b2d;--border:rgba(255,255,255,.06);
+--accent:#2970ff;--accent-dim:rgba(41,112,255,.15);--accent-glow:rgba(41,112,255,.3);
+--green:#10b981;--red:#ef4444;--gold:#f59e0b;
+--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+--radius:12px;--radius-sm:8px;--trans:0.25s cubic-bezier(0.4,0,0.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 30% 20%,rgba(41,112,255,.08) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(16,185,129,.05) 0%,transparent 50%);pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:800px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(13,21,37,.8);backdrop-filter:blur(20px);position:sticky;top:0;z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--accent),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px var(--accent-glow)}
+.logo-text{font-size:16px;font-weight:600;color:var(--text);letter-spacing:-.3px}
+.logo-sub{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
+.user{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#6366f1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff}
+.logout-btn{font-size:11px;color:var(--text3);cursor:pointer;padding:4px 8px;border-radius:6px;background:none;border:1px solid transparent;font-family:inherit;transition:var(--trans)}
+.logout-btn:hover{color:var(--text);border-color:var(--border)}
+.main{flex:1;display:flex;flex-direction:column;padding:20px;gap:16px}
+
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px 28px;backdrop-filter:blur(10px);max-width:420px;margin:40px auto;width:100%}
+.auth-title{font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-.5px}
+.auth-sub{font-size:13px;color:var(--text3);margin-bottom:28px}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.form-input{width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'JetBrains Mono','Inter',monospace;outline:none;transition:var(--trans)}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.form-row{display:flex;gap:8px}
+.btn{font-family:inherit;cursor:pointer;transition:var(--trans);border:none;font-weight:500}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;padding:12px 20px;border-radius:var(--radius-sm);font-size:14px;box-shadow:0 4px 14px rgba(41,112,255,.25);width:100%}
+.btn-primary:hover{box-shadow:0 6px 20px rgba(41,112,255,.4);transform:translateY(-1px)}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:10px 16px;border-radius:var(--radius-sm);font-size:13px}
+.btn-ghost:hover{color:var(--text);border-color:var(--accent)}
+.btn-sm{padding:8px 12px;font-size:12px;width:auto;border-radius:6px}
+.err-msg{color:var(--red);font-size:12px;margin-top:8px}
+.suc-msg{color:var(--green);font-size:12px;margin-top:8px}
+
+.chat-box{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:4px 0}
+.chat-box::-webkit-scrollbar{width:4px}.chat-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.msg{padding:14px 16px;border-radius:var(--radius-sm);max-width:92%;line-height:1.65;font-size:13.5px;white-space:pre-wrap;word-break:break-word;animation:slideUp .3s ease}
+.msg.ai{align-self:flex-start;background:var(--surface);border:1px solid var(--border)}
+.msg.user{align-self:flex-end;background:var(--accent-dim);border:1px solid rgba(41,112,255,.2)}
+.msg .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.msg .tag.green{background:rgba(16,185,129,.15);color:var(--green)}
+.msg .tag.red{background:rgba(239,68,68,.15);color:var(--red)}
+.msg .tag.blue{background:var(--accent-dim);color:var(--accent)}
+.loading-dots{display:flex;align-items:center;gap:6px}
+.loading-dots span{width:5px;height:5px;border-radius:50%;background:var(--text3);animation:bounce 1.4s infinite}
+.loading-dots span:nth-child(2){animation-delay:.2s}.loading-dots span:nth-child(3){animation-delay:.4s}
+@keyframes slideUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce{0%,80%,100%{transform:scale(.5)}40%{transform:scale(1)}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px var(--accent-glow)}50%{box-shadow:0 0 40px var(--accent-dim)}}
+
+.chat-bar{display:flex;gap:8px;padding:8px 0;border-top:1px solid var(--border)}
+.chat-input{flex:1;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:24px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:var(--trans)}
+.chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.chat-send{padding:12px 22px;border-radius:24px;background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;border:none;font-size:14px;font-weight:500;cursor:pointer;transition:var(--trans);box-shadow:0 4px 14px rgba(41,112,255,.2)}
+.chat-send:hover{box-shadow:0 6px 20px rgba(41,112,255,.35)}
+.quick-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.quick-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer;transition:var(--trans);white-space:nowrap}
+.quick-btn:hover{border-color:var(--accent);color:var(--text);background:var(--surface2)}
+.welcome{text-align:center;padding:40px 20px}
+.welcome .icon{font-size:64px;margin-bottom:16px;filter:drop-shadow(0 0 30px var(--accent-glow))}
+.welcome .title{font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-.5px}
+.welcome .sub{font-size:13px;color:var(--text3);max-width:400px;margin:0 auto;line-height:1.6}
+.hint{text-align:center;font-size:10px;color:var(--text3);padding:4px;letter-spacing:.5px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<div class="header">
+<div class="logo">
+<div class="logo-icon">📈</div>
+<div><div class="logo-text">QuantMind</div><div class="logo-sub">AI 量化分析</div></div>
+</div>
+<div class="user" id="headerUser"></div>
+</div>
+<div class="main" id="mainContent"></div>
+</div>
+<script>
+const API='';
+let token='',user=null;
+function $id(id){return document.getElementById(id)}
+function setPage(h){$id('mainContent').innerHTML=h}
+function logout(){token='';user=null;$id('headerUser').innerHTML='';renderLogin()}
+
+async function apiCall(path,opts={}){
+const h={'Content-Type':'application/json'};if(token)h['Authorization']='Bearer '+token;
+const r=await fetch(API+path,{...opts,headers:h,body:opts.body?JSON.stringify(opts.body):undefined});
+if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||r.statusText)}
+return r.json()
+}
+
+function renderLogin(mode='login'){
+const isLogin=mode==='login';
+$id('mainContent').innerHTML=`
+<div class="auth-card">
+<div class="auth-title">${isLogin?'欢迎回来':'创建账号'}</div>
+<div class="auth-sub">${isLogin?'登录以使用智能量化分析':'注册后即可使用AI量化分析'}</div>
+<div style="display:flex;gap:4px;padding:3px;background:var(--surface2);border-radius:8px;margin-bottom:28px">
+<button class="btn btn-ghost btn-sm" style="flex:1;border:none;background:${isLogin?'var(--accent-dim)':'transparent'};color:${isLogin?'var(--text)':'var(--text3)'}" onclick="renderLogin('login')">登录</button>
+<button class="btn btn-ghost btn-sm" style="flex:1;border:none;background:${isLogin?'transparent':'var(--accent-dim)'};color:${isLogin?'var(--text3)':'var(--text)'}" onclick="renderLogin('register')">注册</button>
+</div>
+${isLogin?renderLoginForm():renderRegisterForm()}
+</div>`;
+if(!isLogin){window._countdown=0}
+}
+function renderLoginForm(){return`
+<form onsubmit="doLogin(event)">
+<div class="form-group"><label class="form-label">邮箱地址</label><input class="form-input" id="loginEmail" type="email" required placeholder="name@example.com"></div>
+<div class="form-group"><label class="form-label">密码</label><input class="form-input" id="loginPwd" type="password" required placeholder="····"></div>
+<div class="err-msg" id="loginError"></div>
+<button class="btn btn-primary" type="submit">登 录</button>
+</form>`}
+function renderRegisterForm(){return`
+<form onsubmit="doRegister(event)">
+<div class="form-group"><label class="form-label">邮箱</label><input class="form-input" id="regEmail" type="email" required></div>
+<div class="form-row"><div class="form-group" style="flex:1"><label class="form-label">验证码</label><input class="form-input" id="regCode" required maxlength="4" placeholder="4位数字"></div>
+<button class="btn btn-ghost btn-sm" id="sendCodeBtn" type="button" onclick="sendVerificationCode()" style="align-self:flex-end;width:80px">发送</button></div>
+<div class="form-group"><label class="form-label">用户名</label><input class="form-input" id="regName" required placeholder="3-20位" minlength="3"></div>
+<div class="form-group"><label class="form-label">密码</label><input class="form-input" id="regPwd" type="password" required minlength="6"></div>
+<div class="form-group"><label class="form-label">确认密码</label><input class="form-input" id="regPwd2" type="password" required></div>
+<div class="err-msg" id="regError"></div><div class="suc-msg" id="regSuccess"></div>
+<button class="btn btn-primary" type="submit">注 册</button>
+</form>`}
+
+async function doLogin(e){e.preventDefault();const el=$id('loginError');el.textContent='';
+const email=$id('loginEmail').value.trim(),pwd=$id('loginPwd').value.trim();
+if(!email||!pwd){el.textContent='请输入邮箱和密码';return}
+try{const r=await apiCall('/auth/login/',{method:'POST',body:{email,password:pwd}});
+token=r.token;user=r.user;renderDashboard()}catch(e){el.textContent=e.message}}
+async function sendVerificationCode(){const email=$id('regEmail')?.value.trim();if(!email)return;
+if(window._countdown>0)return;const btn=$id('sendCodeBtn');
+try{await apiCall('/auth/code?email='+encodeURIComponent(email));$id('regError').textContent='';$id('regSuccess').textContent='已发送';
+btn.innerText='30s';btn.disabled=true;window._countdown=30;
+const t=setInterval(()=>{window._countdown--;btn.innerText=window._countdown+'s';if(window._countdown<=0){clearInterval(t);btn.innerText='发送';btn.disabled=false}},1000)}catch(e){$id('regError').textContent=e.message}}
+async function doRegister(e){e.preventDefault();
+const email=$id('regEmail').value.trim(),code=$id('regCode').value.trim(),name=$id('regName').value.trim(),pwd=$id('regPwd').value,pwd2=$id('regPwd2').value;
+if(pwd!==pwd2){$id('regError').textContent='两次密码不一致';return}
+try{await apiCall('/auth/register/',{method:'POST',body:{email,username:name,password:pwd,confirm_password:pwd2,code}});
+$id('regSuccess').textContent='注册成功！';$id('regError').textContent='';
+setTimeout(()=>renderLogin('login'),1200)}catch(e){$id('regError').textContent=e.message}}
+
+function renderDashboard(){
+$id('headerUser').innerHTML=`<div class="avatar">${(user.username||user.email)[0].toUpperCase()}</div><span>${user.username||user.email}</span><button class="logout-btn" onclick="logout()">退出</button>`;$id('mainContent').innerHTML=`
+<div class="welcome">
+<div class="icon">⚡</div>
+<div class="title">AI 量化分析引擎</div>
+<div class="sub">基于 DeepSeek 大模型 + 东方财富实时数据<br>智能分析市场动态，辅助投资决策</div>
+</div>
+<div class="quick-btns">
+${['茅台行情','PE<20的医药股','降息最新消息','芯片龙头','银行估值'].map(s=>`<button class="quick-btn" onclick="quickAsk('${s}')">${s}</button>`).join('')}
+</div>
+<div class="chat-box" id="chatBox"></div>
+<div class="chat-bar"><input class="chat-input" id="chatInput" placeholder="输入股票问题..." onkeydown="if(event.key==='Enter')sendChat()"><button class="chat-send" onclick="sendChat()">发送</button></div>
+<div class="hint">AI 生成内容仅供参看 · 不构成投资建议</div>`;
+}
+function quickAsk(q){$id('chatInput').value=q;sendChat()}
+async function sendChat(){
+const inp=$id('chatInput'),msg=inp.value.trim();if(!msg)return;inp.value='';
+addMsg('user',msg);const lid='l_'+Date.now();
+$id('chatBox').innerHTML+=`<div class="msg ai" id="${lid}"><div class="loading-dots"><span></span><span></span><span></span></div></div>`;
+scrollDown();
+try{const r=await apiCall('/stock/chat/',{method:'POST',body:{message:msg}});
+document.getElementById(lid)?.remove();addMsg('ai',r.reply)}catch(e){document.getElementById(lid)?.remove();addMsg('ai','请求失败：'+e.message)}
+}
+function addMsg(type,text){
+const box=$id('chatBox');
+const display=text.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+box.innerHTML+=`<div class="msg ${type}">${display}</div>`;scrollDown()
+}
+function scrollDown(){const b=$id('chatBox');if(b)b.scrollTop=b.scrollHeight}
+renderLogin()
+</script>
+</body>
+</html>
