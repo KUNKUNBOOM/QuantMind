@@ -35,6 +35,9 @@ body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%
 .form-label{display:block;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .form-input{width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'JetBrains Mono','Inter',monospace;outline:none;transition:var(--trans)}
 .form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.pwd-wrap{position:relative}
+.pwd-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;font-family:inherit;padding:2px 4px}
+.pwd-toggle:hover{color:var(--text2)}
 .form-row{display:flex;gap:8px}
 .btn{font-family:inherit;cursor:pointer;transition:var(--trans);border:none;font-weight:500}
 .btn-primary{background:linear-gradient(135deg,var(--accent),#4f46e5);color:#fff;padding:12px 20px;border-radius:var(--radius-sm);font-size:14px;box-shadow:0 4px 14px rgba(41,112,255,.25);width:100%}
@@ -91,6 +94,7 @@ body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%
 const API='';
 let token='',user=null;
 function $id(id){return document.getElementById(id)}
+function togglePwd(id){const el=$id(id);if(!el)return;el.type=el.type==='password'?'text':'password'}
 function setPage(h){$id('mainContent').innerHTML=h}
 function logout(){token='';user=null;$id('headerUser').innerHTML='';renderLogin()}
 
@@ -113,12 +117,13 @@ $id('mainContent').innerHTML=`
 </div>
 ${isLogin?renderLoginForm():renderRegisterForm()}
 </div>`;
+setTimeout(()=>$id(isLogin?'loginEmail':'regEmail')?.focus(),50);
 if(!isLogin){window._countdown=0}
 }
 function renderLoginForm(){return`
 <form onsubmit="doLogin(event)">
 <div class="form-group"><label class="form-label">邮箱地址</label><input class="form-input" id="loginEmail" type="email" required placeholder="name@example.com"></div>
-<div class="form-group"><label class="form-label">密码</label><input class="form-input" id="loginPwd" type="password" required placeholder="····"></div>
+<div class="form-group"><label class="form-label">密码</label><div class="pwd-wrap"><input class="form-input" id="loginPwd" type="password" required placeholder="····"><button type="button" class="pwd-toggle" onclick="togglePwd('loginPwd')">显示</button></div></div>
 <div class="err-msg" id="loginError"></div>
 <button class="btn btn-primary" type="submit">登 录</button>
 </form>`}
@@ -128,8 +133,8 @@ function renderRegisterForm(){return`
 <div class="form-row"><div class="form-group" style="flex:1"><label class="form-label">验证码</label><input class="form-input" id="regCode" required maxlength="4" placeholder="4位数字"></div>
 <button class="btn btn-ghost btn-sm" id="sendCodeBtn" type="button" onclick="sendVerificationCode()" style="align-self:flex-end;width:80px">发送</button></div>
 <div class="form-group"><label class="form-label">用户名</label><input class="form-input" id="regName" required placeholder="3-20位" minlength="3"></div>
-<div class="form-group"><label class="form-label">密码</label><input class="form-input" id="regPwd" type="password" required minlength="6"></div>
-<div class="form-group"><label class="form-label">确认密码</label><input class="form-input" id="regPwd2" type="password" required></div>
+<div class="form-group"><label class="form-label">密码</label><div class="pwd-wrap"><input class="form-input" id="regPwd" type="password" required minlength="6"><button type="button" class="pwd-toggle" onclick="togglePwd('regPwd')">显示</button></div></div>
+<div class="form-group"><label class="form-label">确认密码</label><div class="pwd-wrap"><input class="form-input" id="regPwd2" type="password" required><button type="button" class="pwd-toggle" onclick="togglePwd('regPwd2')">显示</button></div></div>
 <div class="err-msg" id="regError"></div><div class="suc-msg" id="regSuccess"></div>
 <button class="btn btn-primary" type="submit">注 册</button>
 </form>`}
@@ -137,7 +142,7 @@ function renderRegisterForm(){return`
 async function doLogin(e){e.preventDefault();const el=$id('loginError');el.textContent='';
 const email=$id('loginEmail').value.trim(),pwd=$id('loginPwd').value.trim();
 if(!email||!pwd){el.textContent='请输入邮箱和密码';return}
-try{const r=await apiCall('/auth/login/',{method:'POST',body:{email,password:pwd}});
+try{const r=await apiCall('/auth/login',{method:'POST',body:{email,password:pwd}});
 token=r.token;user=r.user;renderDashboard()}catch(e){el.textContent=e.message}}
 async function sendVerificationCode(){const email=$id('regEmail')?.value.trim();if(!email)return;
 if(window._countdown>0)return;const btn=$id('sendCodeBtn');
@@ -147,7 +152,7 @@ const t=setInterval(()=>{window._countdown--;btn.innerText=window._countdown+'s'
 async function doRegister(e){e.preventDefault();
 const email=$id('regEmail').value.trim(),code=$id('regCode').value.trim(),name=$id('regName').value.trim(),pwd=$id('regPwd').value,pwd2=$id('regPwd2').value;
 if(pwd!==pwd2){$id('regError').textContent='两次密码不一致';return}
-try{await apiCall('/auth/register/',{method:'POST',body:{email,username:name,password:pwd,confirm_password:pwd2,code}});
+try{await apiCall('/auth/register',{method:'POST',body:{email,username:name,password:pwd,confirm_password:pwd2,code}});
 $id('regSuccess').textContent='注册成功！';$id('regError').textContent='';
 setTimeout(()=>renderLogin('login'),1200)}catch(e){$id('regError').textContent=e.message}}
 
@@ -171,12 +176,13 @@ const inp=$id('chatInput'),msg=inp.value.trim();if(!msg)return;inp.value='';
 addMsg('user',msg);const lid='l_'+Date.now();
 $id('chatBox').innerHTML+=`<div class="msg ai" id="${lid}"><div class="loading-dots"><span></span><span></span><span></span></div></div>`;
 scrollDown();
-try{const r=await apiCall('/stock/chat/',{method:'POST',body:{message:msg}});
+try{const r=await apiCall('/stock/chat',{method:'POST',body:{message:msg}});
 document.getElementById(lid)?.remove();addMsg('ai',r.reply)}catch(e){document.getElementById(lid)?.remove();addMsg('ai','请求失败：'+e.message)}
 }
 function addMsg(type,text){
 const box=$id('chatBox');
-const display=text.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const display=safe.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
 box.innerHTML+=`<div class="msg ${type}">${display}</div>`;scrollDown()
 }
 function scrollDown(){const b=$id('chatBox');if(b)b.scrollTop=b.scrollHeight}
